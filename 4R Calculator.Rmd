@@ -1,0 +1,61 @@
+---
+title: "4R Calculator"
+output: html_document
+date: "2024-10-28"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load data sheets}
+library(readxl)
+
+inputs = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs.xlsx")
+
+machinery = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx")
+
+n2o = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/N2O Emission Factors.xlsx")
+
+```
+
+
+# Machinery Costs 
+## Variable Costs 
+```{r Labor}
+library(dplyr)
+labor = 15
+
+machinery$PerRate_hr.ac * labor
+
+```
+= labor($/hr) * Per Rate of implement (hr/ac)
+1.	Per Rate (hr/ac) = 1/[speed * efficiency * (implement length/8.25)]
+
+ii.	Center Pivot 
+= labor($/hr) * labor (hrs/ac-in) * irrigation (ac-in) 
+
+iii.	Drip Irrigation 
+= labor($/hr) * labor (hr/application) 
+
+```
+
+```{r Fuel}
+
+```
+
+```{r R&M}
+
+```
+
+## Ownership Costs 
+```{r Depreciation}
+
+```
+
+```{r Interest}
+
+```
+
