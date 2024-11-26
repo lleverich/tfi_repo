@@ -10,27 +10,67 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r load data sheets}
+```{r load advocate data}
 library(readxl)
 
-inputs = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs.xlsx")
+advocate = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs.xlsx")
+```
 
-machinery = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx")
 
+```{r load calculator sheets}
+#Machinery 
+tractors = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 1)
+
+machines = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 2)
+
+implements = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 3)
+
+irrigation = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 4)
+
+#Sources 
+
+#Climate
 n2o = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/N2O Emission Factors.xlsx")
 
 ```
 
 
 # Machinery Costs 
-## Variable Costs 
-```{r Labor}
-library(dplyr)
-labor = 15
 
-machinery$PerRate_hr.ac * labor
+```{r Prepare Data Frame for Machinery Costs}
+library(tidyverse)
+library(here)
 
+
+# Clean out empty columns 
+df1 <- advocate %>% select(-Mach_purch_price, -Imp_purch_price, -`Water_costs_$.ac-in`, -`Micro_$.ton`, -`other_fert_$.ton`, -`Inhibitor_$.ton`)
+
+
+# Join implement cost values 
+df2 <- df1 %>%
+  left_join(implements, by = c("Implement", "Imp_width_ft"))%>%
+  select(where(~ !all(is.na(.))))
+
+# Join machine costs values
+df3 <- df2 %>%
+  left_join(machines, by = c("Machine"), suffix = c("_Imp", "_Mach")) %>%
+  select(where(~ !all(is.na(.))))
+
+# Join tractor cost values
+df4 <- df3 %>%
+  left_join(tractors, by = c("Tractor_hp"), suffix = c("_Imp", "_Tract") ) %>%
+  select(where(~ !all(is.na(.))))
+  
+# Join irrigation cost values 
+df5 <- df4 %>%
+  left_join(irrigation, by = c("Irrigation"), suffix = c("df4", "Irr") )
+  # select(where(~ !all(is.na(.)))) # Do not drop extra columns for calculation of cost as placeholder columns 
+
+# View the resulting data frame
+print(df5)
 ```
+
+#Labor Costs 
 = labor($/hr) * Per Rate of implement (hr/ac)
 1.	Per Rate (hr/ac) = 1/[speed * efficiency * (implement length/8.25)]
 
@@ -40,7 +80,24 @@ ii.	Center Pivot
 iii.	Drip Irrigation 
 = labor($/hr) * labor (hr/application) 
 
+```{r Calculate Labor Costs}
+
+labor = 15 
+
+# Add placeholder column to calc costs 
+
+df6 <- df5 %>%
+  mutate(Labor = case_when(
+    is.na(Irrigation) ~ PerRate_hr.ac_Imp * labor,  # If Irrigation is NA
+    Irrigation == "Center_pivot" ~ labor * `Labor_hrs.ac-in` * `Irr_vol_ac-in`,  # If Irrigation is "center_pivot"
+    Irrigation == "Drip_irrigation" & !is.na(Irrigation)~ labor * `Labor_hrs/app`,  # If Irrigation is "drip_irrigation"
+    TRUE ~ PerRate_hr.ac_Imp * labor  # Default case if none of the above conditions are met
+  ))
+
 ```
+
+#Fuel Costs 
+
 
 ```{r Fuel}
 
