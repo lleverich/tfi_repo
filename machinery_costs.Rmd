@@ -1,5 +1,5 @@
 ---
-title: "4R Calculator"
+title: "Machinery COsts"
 output: html_document
 date: "2024-10-28"
 editor_options: 
@@ -92,7 +92,7 @@ df6 <- df5 %>%
     is.na(Irrigation) ~ PerRate_hr.ac_Imp * labor,  # If Irrigation is NA
     Irrigation == "Center_pivot" ~ labor * `Labor_hrs.ac-in` * `Irr_vol_ac-in`,  # If Irrigation is "center_pivot"
     Irrigation == "Drip_irrigation" & !is.na(Irrigation)~ labor * `Labor_hrs/app`,  # If Irrigation is "drip_irrigation"
-    TRUE ~ PerRate_hr.ac_Imp * labor  # Default case if none of the above conditions are met
+    TRUE ~ 0  # Default case if none of the above conditions are met
   ))
 
 ```
@@ -117,7 +117,7 @@ df7 <- df6 %>%
   mutate(FuelCost = case_when(
     is.na(Irrigation) ~ FuelUse_gal.hr * PerRate_hr.ac_Imp * fuel_cost1,  # If Irrigation is NA
     Irrigation == "Center_pivot" ~ fuel_cost2 * `Fuel_gal.ac-in` * `Irr_vol_ac-in`,  # If Irrigation is "center_pivot"
-    TRUE ~ FuelUse_gal.hr * PerRate_hr.ac_Imp * fuel_cost1  # Default case if none of the above conditions are met
+    TRUE ~ 0  # Default case if none of the above conditions are met
   ))
 ```
 
@@ -136,25 +136,17 @@ df8 <- df7 %>%
                           PerRate_hr.ac_Imp + (Imp_purch_price * `RandM_%_Imp`/
                           UsefulLife_yrs_Imp/AnnualUse_hrs_Imp) * PerRate_hr.ac_Imp), # If Irrigation is NA
     Irrigation == "Center_pivot" ~ `RandM_$.ac-in` * `Irr_vol_ac-in`,  # If Irrigation is "center_pivot"
-    TRUE ~ ((Mach_purch_price * `RandM_%` / UsefulLife_yrs_Tract / AnnualUse_hrs) * 
-            PerRate_hr.ac_Imp) + ((Imp_purch_price * `RandM_%_Imp` / UsefulLife_yrs_Imp /
-            AnnualUse_hrs_Imp) * PerRate_hr.ac_Imp)  # Default case if none of the above conditions are met
-  ))
+    TRUE ~ 0)  # Default case if none of the above conditions are met
+  )
 ```
-
-## Total Variable Costs 
-```{r Total Variable Costs}
-df8 <- df8 %>% 
-  mutate(VariableCosts = LaborCost + FuelCost + RMCost)
-```
-
 
 ## Ownership Costs 
 
 ### Depreciation 
   
 i. Machine/Implement  
-= (tractor price – (tractor price * salvage)) / useful life / annual hours * per rate of implement +  (implement price – (implement price * salvage)) / useful life / annual hours * per rate of implement  
+= (((tractor price – (tractor price * salvage)) / useful life / annual hours) * per rate of implement) +  
+((implement price – (implement price * salvage)) / useful life / annual hours * per rate of implement))  
 
 ii. Center Pivot  
 = Ownership cost * irrigation (ac-in)  
@@ -166,23 +158,54 @@ iii. Drip Irrigation
 total_irr_vol = df8$`Irr_vol_ac-in`
 
 df9 <- df8 %>%
+  mutate(D_useYrs = UsefulLife_yrs_Tract, D_useYrs_Imp = UsefulLife_yrs_Imp) %>%
   mutate(DeprecCosts = case_when(
-    is.na(Irrigation) ~ (((Mach_purch_price - (Mach_purch_price * `Salvage_%`))/
-                           UsefulLife_yrs_Tract / AnnualUse_hrs * PerRate_hr.ac_Imp) +
-                        ((Imp_purch_price - (Imp_purch_price * `Salvage_%_Imp`)) / 
-                           UsefulLife_yrs_Imp / AnnualUse_hrs_Imp * PerRate_hr.ac_Imp)),  # If Irrigation is NA
+    is.na(Irrigation) ~ ((((Mach_purch_price - (Mach_purch_price * `Salvage_%`))/
+                           UsefulLife_yrs_Tract / AnnualUse_hrs) * PerRate_hr.ac_Imp) +
+      
+      
+                        (((Imp_purch_price - (Imp_purch_price * `Salvage_%_Imp`)) / 
+                           UsefulLife_yrs_Imp / AnnualUse_hrs_Imp) * PerRate_hr.ac_Imp)),  # If Irrigation is NA
+    
+    
+    
     Irrigation == "Center_pivot" ~ `Ownership_$.ac-in` * `Irr_vol_ac-in`,  # If Irrigation is "center_pivot"
     Irrigation == "Drip_irrigation" & !is.na(Irrigation) ~ ((`Ownership_$.ft` * `Imp_width_ft_Imp`) * (`Irr_vol_ac-in`/total_irr_vol)),
-    TRUE ~ (((Mach_purch_price - (Mach_purch_price * `Salvage_%`))/
-                           UsefulLife_yrs_Tract / AnnualUse_hrs * PerRate_hr.ac_Imp) +
-                        ((Imp_purch_price - (Imp_purch_price * `Salvage_%_Imp`)) / 
-                           UsefulLife_yrs_Imp / AnnualUse_hrs_Imp * PerRate_hr.ac_Imp)) # Default case if none of the above conditions are met
-))
+    TRUE ~ 0) # Default case if none of the above conditions are met
+)
 ```
 ### Interest 
 
+i. Machine/Implement 
+= (((machinery price+(machinery price * salvage))/2* interest rate / annual hours * per rate of implement) + 
+((implement price +(implement price * salvage))/2* interest rate / annual hours * per rate of implement))
+
+ii. Center pivot  
+None 
+
+iii. Drip irrigation  
+None
 
 ```{r Interest}
+interest_rate = 0.05
 
+df10 <- df9 %>%
+  mutate(InterestCosts = case_when(
+    is.na(Irrigation) ~ (((Mach_purch_price + (Mach_purch_price * 
+                                             `Salvage_%`))/2*interest_rate/AnnualUse_hrs*PerRate_hr.ac_Imp) +
+                        ((Imp_purch_price+(Imp_purch_price*`Salvage_%_Imp`))/2*interest_rate/AnnualUse_hrs_Imp *
+                            PerRate_hr.ac_Imp)),
+    TRUE ~ 0) # Default case if none of the above conditions are met
+)
+```
+
+
+
+## Total Costs 
+```{r Total Variable Costs}
+df10 <- df10 %>% 
+  mutate(VariableCosts = LaborCost + FuelCost + RMCost) %>%
+  mutate(OwnershipCosts = InterestCosts + DeprecCosts) %>%
+  mutate(MachineryCosts = VariableCosts + OwnershipCosts)
 ```
 
