@@ -1,0 +1,23 @@
+---
+title: "source_costs"
+output: html_document
+date: "2024-12-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load advocate data}
+library(readxl)
+
+advocate = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs.xlsx")
+```
+
+
+```{r load calculator sheets}
+#Sources 
+prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 1)
+```
+

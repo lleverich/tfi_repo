@@ -199,8 +199,6 @@ df10 <- df9 %>%
 )
 ```
 
-
-
 ## Total Costs 
 ```{r Total Variable Costs}
 df10 <- df10 %>% 
