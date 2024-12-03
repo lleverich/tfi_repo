@@ -1,0 +1,39 @@
+---
+title: "Summary"
+output: html_document
+date: "2024-12-03"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load advocate data}
+library(readxl)
+
+advocate = read.csv("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs_Costs.csv")
+
+farm = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE FarmInfo.xlsx", sheet = 1)
+
+services = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE FarmInfo.xlsx", sheet = 2)
+```
+
+# Join Services and Farm Info to advocate info
+```{r}
+df1 <- advocate %>%
+  
+```
+
+
+
+# Total N, P, and K units per ac per year 
+
+```{r}
+df1 <- advocate %>%
+  mutate(N_lbsAc = Nperc/100 * Source.Rate, 
+         P_lbsAc = Pperc/100 * Source.Rate, 
+         K_lbsAc = Kperc/100 * Source.Rate)
+```

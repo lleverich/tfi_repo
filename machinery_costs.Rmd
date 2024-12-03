@@ -211,6 +211,6 @@ inputs1 <- df11 %>%
   select(-c(22:54))
 
 # Save csv
-write.csv(inputs1, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs_MachineCosts.csv", row.names = FALSE)
+write.csv(inputs1, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs_Costs.csv", row.names = FALSE)
 ```
 
