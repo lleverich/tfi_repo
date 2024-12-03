@@ -27,10 +27,8 @@ implements = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - 
 
 irrigation = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 4)
 
-#Sources 
-
-#Climate
-n2o = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/N2O Emission Factors.xlsx")
+#Prices for Diesel
+prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/FertilizerPrices_Dec2024.xlsx", sheet = 2)
 
 ```
 
@@ -53,21 +51,20 @@ df2 <- df1 %>%
 
 # Join machine costs values
 df3 <- df2 %>%
-  left_join(machines, by = c("Machine"), suffix = c("_Imp", "_Mach")) %>%
-  select(where(~ !all(is.na(.))))
+  left_join(machines, by = c("Machine"), 
+            suffix = c("_Imp", "_Mach")) %>% #Imp (for implement) added to original columns 
+  select(where(~ !all(is.na(.)))) #Drop columns that are all empty 
 
 # Join tractor cost values
 df4 <- df3 %>%
-  left_join(tractors, by = c("Tractor_hp"), suffix = c("_Imp", "_Tract") ) %>%
+  left_join(tractors, by = c("Tractor_hp"), # Join tractor costs by its HP class 
+            suffix = c("_Imp", "_Tract") ) %>% #Imp (for implement) added to original columns 
   select(where(~ !all(is.na(.))))
   
 # Join irrigation cost values 
 df5 <- df4 %>%
-  left_join(irrigation, by = c("Irrigation"), suffix = c("df4", "Irr") )
-  # select(where(~ !all(is.na(.)))) # Do not drop extra columns for calculation of cost as placeholder columns 
+  left_join(irrigation, by = c("Irrigation")) # Do not drop extra columns for calculation of cost as placeholder columns 
 
-# View the resulting data frame
-print(df5)
 ```
 
 ## Variable Costs 
@@ -82,16 +79,16 @@ iii.	Drip Irrigation
 = labor($/hr) * labor (hr/application) 
 
 ```{r Calculate Labor Costs}
-
+# Cost for labor in $/hr 
 labor = 15 
-
-# Add placeholder column to calc costs 
 
 df6 <- df5 %>%
   mutate(LaborCost = case_when(
     is.na(Irrigation) ~ PerRate_hr.ac_Imp * labor,  # If Irrigation is NA
-    Irrigation == "Center_pivot" ~ labor * `Labor_hrs.ac-in` * `Irr_vol_ac-in`,  # If Irrigation is "center_pivot"
-    Irrigation == "Drip_irrigation" & !is.na(Irrigation)~ labor * `Labor_hrs/app`,  # If Irrigation is "drip_irrigation"
+    Irrigation == "Center_pivot" ~  # If Irrigation is "center_pivot"
+      labor * `Labor_hrs.ac-in` * `Irr_vol_ac-in`, 
+    Irrigation == "Drip_irrigation" & !is.na(Irrigation) ~  # If Irrigation is "drip_irrigation"
+      labor * `Labor_hrs/app`, 
     TRUE ~ 0  # Default case if none of the above conditions are met
   ))
 
@@ -108,14 +105,18 @@ iii. Drip Irrigation
 None 
 
 ```{r Fuel}
-# fuel cost is the diesel average over 3 year period for equipment 
-fuel_cost1 = 1.94
 # fuel cost global variable for irrigation (not sure where it comes from - could use average?)**
 fuel_cost2 = 2.75
 
+# Join prices df to get diesel costs for relevant years (3 yr avg)
 df7 <- df6 %>%
+  left_join(prices %>% select(Year, Diesel), by = "Year")
+
+
+# Calculate Fuel Costs 
+df8 <- df7 %>%
   mutate(FuelCost = case_when(
-    is.na(Irrigation) ~ FuelUse_gal.hr * PerRate_hr.ac_Imp * fuel_cost1,  # If Irrigation is NA
+    is.na(Irrigation) ~ FuelUse_gal.hr * PerRate_hr.ac_Imp * Diesel,  # If Irrigation is NA
     Irrigation == "Center_pivot" ~ fuel_cost2 * `Fuel_gal.ac-in` * `Irr_vol_ac-in`,  # If Irrigation is "center_pivot"
     TRUE ~ 0  # Default case if none of the above conditions are met
   ))
@@ -130,7 +131,7 @@ ii. Center Pivot
 = R&M($/ac-in) * irrigation (ac-in)
 
 ```{r R&M}
-df8 <- df7 %>%
+df9 <- df8 %>%
   mutate(RMCost = case_when(
     is.na(Irrigation) ~ ((Mach_purch_price * `RandM_%`/ UsefulLife_yrs_Tract / AnnualUse_hrs) *
                           PerRate_hr.ac_Imp + (Imp_purch_price * `RandM_%_Imp`/
@@ -157,7 +158,7 @@ iii. Drip Irrigation
 ```{r Depreciation}
 total_irr_vol = df8$`Irr_vol_ac-in`
 
-df9 <- df8 %>%
+df10 <- df9 %>%
   mutate(D_useYrs = UsefulLife_yrs_Tract, D_useYrs_Imp = UsefulLife_yrs_Imp) %>%
   mutate(DeprecCosts = case_when(
     is.na(Irrigation) ~ ((((Mach_purch_price - (Mach_purch_price * `Salvage_%`))/
@@ -189,7 +190,7 @@ None
 ```{r Interest}
 interest_rate = 0.05
 
-df10 <- df9 %>%
+df11 <- df10 %>%
   mutate(InterestCosts = case_when(
     is.na(Irrigation) ~ (((Mach_purch_price + (Mach_purch_price * 
                                              `Salvage_%`))/2*interest_rate/AnnualUse_hrs*PerRate_hr.ac_Imp) +
@@ -201,9 +202,15 @@ df10 <- df9 %>%
 
 ## Total Costs 
 ```{r Total Variable Costs}
-df10 <- df10 %>% 
+df11 <- df11 %>% 
   mutate(VariableCosts = LaborCost + FuelCost + RMCost) %>%
   mutate(OwnershipCosts = InterestCosts + DeprecCosts) %>%
-  mutate(MachineryCosts = VariableCosts + OwnershipCosts)
+  mutate(MachineryCosts = VariableCosts + OwnershipCosts) 
+
+inputs1 <- df11 %>%
+  select(-c(22:54))
+
+# Save csv
+write.csv(inputs1, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs_MachineCosts.csv", row.names = FALSE)
 ```
 

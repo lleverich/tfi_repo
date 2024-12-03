@@ -2,6 +2,8 @@
 title: "source_costs"
 output: html_document
 date: "2024-12-02"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -12,12 +14,75 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r load advocate data}
 library(readxl)
 
-advocate = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs.xlsx")
+advocate = read.csv("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs_MachineCosts.csv")
 ```
 
 
 ```{r load calculator sheets}
 #Sources 
-prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 1)
+prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/FertilizerPrices_Dec2024.xlsx", sheet = 2)
 ```
+
+```{r}
+ # Load the tidyr package
+library(tidyr)
+
+# Convert the dataframe to long format
+price_long <- prices %>%
+  select(where(~ !all(is.na(.)))) %>% 
+  pivot_longer(
+    cols = starts_with("AA"):starts_with("K"),  # Select the columns to pivot
+    names_to = "Source",  # New column for the names of the subjects
+    values_to = "Price"    # New column for the scores
+  ) %>%
+  mutate(unit = ifelse(Source %in% c("N", "P", "K"), "lbs", "ton"))
+
+# View the long-format dataframe
+print(price_long)
+```
+
+
+# Source Costs 
+i.	Custom Blends or Starter 
+    1.	lbs  
+      = (Price of N that year * N percentage * source rate) + (Price of P that year * P percentage * source rate) + (price         of K that year * K percentage * source rate)
+    2.	Tons
+      = (Price of N that year * N percentage * source rate * 2000) + (Price of P that year * P percentage * source rate *         2000) + (price of K that year * K percentage * source rate * 2000)
+
+ii.	Specific Sources
+  1.	Lbs 
+    = (Price of source/2000) * source rate 
+  2.	Tons 
+    = Price of source * source rate
+
+
+
+```{r}
+# Join prices to inputs for specific sources prices 
+df2 <- advocate %>%
+  left_join(price_long, by = c("Year", "Source"))
+
+df3 <- df2 %>%
+  left_join(prices, "Year", # Join all columns by year for prices 
+            suffix = c("perc", "price")) %>% # add a suffix to the columns for the 2 dataframes being joined 
+  select(where(~ !all(is.na(.)))) #Drop all columns where all rows are NA
+```
+
+
+```{r}
+# Calculate prices for blends/starter 
+df3 <- df2 %>%
+  mutate(Price = case_when(
+    Source == "Blend" | Source == "Starter" ~ 
+      Nprice ,  # OR condition for "lbs"
+    TRUE ~ Price  # Default case: retain the current value of "price"
+  )) %>%
+  mutate(unit = case_when(
+    Source == "Blend" | Source == "Starter" ~ "lbs",  # OR condition for "lbs"
+    TRUE ~ unit))
+
+%>%
+  select(where(~ !all(is.na(.))))
+```
+
 
