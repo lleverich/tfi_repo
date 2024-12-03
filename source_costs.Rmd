@@ -75,7 +75,7 @@ i.	Custom Blends or Starter
 # Calculate prices for blends/starter 
 df3 <- df2 %>%
   mutate(SourcePrice = case_when(
-    Source == "Blend" | Source == "Starter" ~ 
+    Source == "Blends" | Source == "Starter" | Source == "Blend" ~ 
       (Nprice * (Nperc/100) * Source.Rate) + (Pprice * (Pperc/100) * Source.Rate) + (Kprice * (Kperc/100) * Source.Rate), 
     TRUE ~ SourcePrice  # Default case: retain the current value of "price"
   )) 

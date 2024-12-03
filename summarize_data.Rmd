@@ -19,21 +19,114 @@ advocate = read.csv("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Prog
 farm = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE FarmInfo.xlsx", sheet = 1)
 
 services = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE FarmInfo.xlsx", sheet = 2)
+
+nitrous = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/N2O Emission Factors.xlsx", sheet = 2)
 ```
 
-# Join Services and Farm Info to advocate info
+
+# Join Farm Info to advocate info
 ```{r}
 df1 <- advocate %>%
+  left_join(farm, by = c("Year", "Field" = "Field Name"))
+  
+```
+
+# N, P, and K in lbs per ac for each application
+
+```{r}
+df2 <- df1 %>%
+  mutate(N_lbsAc = Nperc/100 * Source.Rate, 
+         P_lbsAc = Pperc/100 * Source.Rate, 
+         K_lbsAc = Kperc/100 * Source.Rate)
+```
+
+# Nutrient Use Eff Summary 
+
+```{r}
+nue <- df2 %>%
+  group_by(Year, Field, Crop)%>% 
+  summarise(
+    TotalN = sum(N_lbsAc, na.rm = TRUE), 
+    TotalP = sum(P_lbsAc, na.rm = TRUE),
+    TotalK = sum(K_lbsAc, na.rm = TRUE), 
+    AvgYield = mean(Yield), 
+    NUE_lbBu = AvgYield/TotalN, #PFP (output/input)
+    PUE_lbBu = AvgYield/TotalP, #PFP (output/input)
+    N_removal = (AvgYield * 56 * 0.0136), # corn weight is 56 lbs and 0.0136 is the N concentration (1.36%) of grain
+    N_Bal = N_removal - TotalN, # (-) value is N fertilizer left in soil 
+    P_removal = (AvgYield * 56 * 0.25), 
+    P_Bal = P_removal - TotalP) 
+```
+
+# Cost Summary 
+```{r}
+
+costs <- df2 %>%
+  group_by(Year, Field) %>%
+  summarize(
+    AvgMachineCost = mean(MachineryCosts), 
+    AvgSourceCost = mean(SourcePrice), 
+    AvgYield = mean(Yield)
+  )
+
+costsService <- services %>%
+  group_by(Year, Field) %>%
+  summarize(
+    CostService = mean(`Cost($/ac)`)
+  )
+
+cost2 <- costsService %>%
+  left_join(costs, by= c("Year", "Field")) %>%
+  mutate(Year = as.integer(Year))
+
+corn_price = 4.50
+
+chemical = 100
+land = 300
+seed = 150 
+other = 200 
+
+otherCosts = chemical + land + seed + other
+
+# Cost summary per ac 
+costPerAc <- cost2 %>%
+  mutate(totalCost = AvgMachineCost + AvgSourceCost + CostService, 
+         revenueAc = AvgYield*corn_price,
+         Profits = revenueAc - totalCost - otherCosts)
+
+```
+
+# CO2 Equivalents 
+
+Basic = N2O * 1.57 * 296
+Intermediate = basic - (basic * 0.07) 7% reduction
+Advanced = basic - (basic * 0.07) 14% reduction 
+
+Land Resource Region (LRR)
+
+```{r}
+LRR = "T" 
+farm$LRR = "T"
+
+farm2 = farm %>%
+  left_join(nitrous, by = c("LRR" = "LRR", "Soil Texture" = "Soil Texture", "Crop" = "Crop")) %>%
+  left_join(nue, by = c("Year", "Crop", "Field Name" = "Field")) %>%
+  select(where(~ !all(is.na(.)))) 
+
+farm3 = farm2 %>%
+  mutate(N_KgHa = TotalN * 1.12085, 
+    ProportionalDirectKgHa = ((N_KgHa/`Typical Fert_kgNha`)*
+                              (typicalflux_kgN20ha - Zeroflux_kgN20Ha)), 
+    TotalDirectKgHa = Zeroflux_kgN20Ha + ProportionalDirectKgHa, 
+    IndirectKgHa = N_KgHa*0.0035, 
+    Total = TotalDirectKgHa + IndirectKgHa, 
+    N2Oequiv=Total*(1.57*296), 
+    CO2e_buBasic = N2Oequiv/AvgYield,
+    CO2e_buInt = CO2e_buBasic - (CO2e_buBasic*0.07),
+    CO2e_buAdv = CO2e_buBasic - (CO2e_buBasic*0.14)
+  )
   
 ```
 
 
 
-# Total N, P, and K units per ac per year 
-
-```{r}
-df1 <- advocate %>%
-  mutate(N_lbsAc = Nperc/100 * Source.Rate, 
-         P_lbsAc = Pperc/100 * Source.Rate, 
-         K_lbsAc = Kperc/100 * Source.Rate)
-```
