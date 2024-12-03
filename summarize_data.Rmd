@@ -50,12 +50,15 @@ nue <- df2 %>%
     TotalP = sum(P_lbsAc, na.rm = TRUE),
     TotalK = sum(K_lbsAc, na.rm = TRUE), 
     AvgYield = mean(Yield), 
-    NUE_lbBu = AvgYield/TotalN, #PFP (output/input)
-    PUE_lbBu = AvgYield/TotalP, #PFP (output/input)
+    NUE_PFP = AvgYield/TotalN, #PFP = (lb grain harvested) / (lb nutrient applied)
+    PUE_PFP = AvgYield/TotalP, 
     N_removal = (AvgYield * 56 * 0.0136), # corn weight is 56 lbs and 0.0136 is the N concentration (1.36%) of grain
-    N_Bal = N_removal - TotalN, # (-) value is N fertilizer left in soil 
     P_removal = (AvgYield * 56 * 0.25), 
-    P_Bal = P_removal - TotalP) 
+    NUE_PNB = N_removal/TotalN, # Partial nutrient balance (PNB)= (lb harvest removal) / (lb applied nutrient)
+    PUE_PNB = P_removal/TotalP, 
+    P_Bal = P_removal - TotalP,# (-) value is N fertilizer left in soil 
+    N_Bal = N_removal - TotalN, 
+    ) 
 
 write.csv(nue, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/NUE Summary.csv", row.names = FALSE)
 ```
@@ -128,6 +131,13 @@ farm3 = farm2 %>%
     CO2e_buInt = CO2e_buBasic - (CO2e_buBasic*0.07),
     CO2e_buAdv = CO2e_buBasic - (CO2e_buBasic*0.14)
   )
+
+n2o <- farm3 %>%
+  mutate(CO2equiv = case_when(
+    `4RLevel` == "Basic" ~  CO2e_buBasic, 
+    `4RLevel` == "Intermediate" ~  CO2e_buInt, 
+    `4RLevel` == "Advanced" ~  CO2e_buAdv)) %>%
+  select(-CO2e_buBasic, -CO2e_buInt, -CO2e_buAdv)
 
 write.csv(farm3, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/N2O Summary.csv", row.names = FALSE)
 
