@@ -10,11 +10,15 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r set wd}
+setwd("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/")
+```
 
 ```{r load advocate data}
 library(readxl)
 
-advocate = read.csv("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs_Costs.csv")
+advocate = read.csv("2024 Bryant Lowe/Outputs/DE Inputs_Costs.csv")
+advocate = read.csv("2024 Mason Roberts/Outputs/GA Inputs_Costs.csv")
 ```
 
 
@@ -55,7 +59,7 @@ ii.	Specific Sources
 ```{r}
 # Join prices to inputs for specific sources prices 
 df1 <- advocate %>%
-  left_join(price_long, by = c("Year", "Source")) %>%
+  left_join(price_long, by = c("Source", "Year")) %>%
   mutate(SourcePrice = (SourcePrice/2000) * Source.Rate)
 
 df2 <- df1 %>%
@@ -89,7 +93,7 @@ df3 <- df3 %>%
   select(-c(24:35))
 
 # Save csv
-write.csv(df3, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs_Costs.csv", row.names = FALSE)
+write.csv(df3, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/2024 Bryant Lowe/Outputs/DE Inputs_Costs.csv", row.names = FALSE)
 
 print(df3)
 ```
