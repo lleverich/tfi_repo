@@ -15,10 +15,14 @@ setwd("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/
 ```
 
 
-```{r DE advocate}
+```{r packages}
 library(readxl)
+library(tidyverse)
+```
 
-advocate = read.csv("2024 Bryant Lowe/Outputs/DE Inputs_Costs.csv")
+
+```{r DE advocate}
+advocate = read.csv("2024 Bryant Lowe/Outputs/DE Inputs_sourceMachCosts.csv")
 
 farm = read_excel("2024 Bryant Lowe/DE FarmInfo.xlsx", sheet = 1)
 
@@ -26,18 +30,15 @@ services = read_excel("2024 Bryant Lowe/DE FarmInfo.xlsx", sheet = 2)
 ```
 
 ```{r GA advocate}
-advocate = read.csv("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/2024 Bryant Lowe/Outputs/DE Inputs_Costs.csv")
+advocate = read.csv("2024 Mason Roberts/Outputs/GA Inputs_sourceMachCosts.csv")
 
-farm = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/2024 Bryant Lowe/DE FarmInfo.xlsx", sheet = 1)
+farm = read_excel("2024 Mason Roberts/GA FarmInfo.xlsx", sheet = 1)
 
-services = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/2024 Bryant Lowe/DE FarmInfo.xlsx", sheet = 2)
+services = read_excel("2024 Mason Roberts/GA FarmInfo.xlsx", sheet = 2)
 ```
 
 
-
-```{r load advocate data}
-
-
+```{r load nitrous data}
 nitrous = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/N2O Emission Factors.xlsx", sheet = 2)
 ```
 
@@ -45,7 +46,7 @@ nitrous = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Pro
 # Join Farm Info to advocate info
 ```{r}
 df1 <- advocate %>%
-  left_join(farm, by = c("Year", "Field" = "Field Name"))
+  left_join(farm, by = c("year", "field"))
   
 ```
 
@@ -53,21 +54,21 @@ df1 <- advocate %>%
 
 ```{r}
 df2 <- df1 %>%
-  mutate(N_lbsAc = Nperc/100 * Source.Rate, 
-         P_lbsAc = Pperc/100 * Source.Rate, 
-         K_lbsAc = Kperc/100 * Source.Rate)
+  mutate(N_lbsAc = Nperc/100 * sourceRate, 
+         P_lbsAc = Pperc/100 * sourceRate, 
+         K_lbsAc = Kperc/100 * sourceRate)
 ```
 
 # Nutrient Use Eff Summary 
 
 ```{r}
 nue <- df2 %>%
-  group_by(Year, Field, Crop)%>% 
+  group_by(year, field, crop)%>% 
   summarise(
     TotalN = sum(N_lbsAc, na.rm = TRUE), 
     TotalP = sum(P_lbsAc, na.rm = TRUE),
     TotalK = sum(K_lbsAc, na.rm = TRUE), 
-    AvgYield = mean(Yield), 
+    AvgYield = mean(yield), 
     NUE_PFP = AvgYield/TotalN, #PFP = (lb grain harvested) / (lb nutrient applied)
     PUE_PFP = AvgYield/TotalP, 
     N_removal = (AvgYield * 56 * 0.0136), # corn weight is 56 lbs and 0.0136 is the N concentration (1.36%) of grain
@@ -77,32 +78,36 @@ nue <- df2 %>%
     P_Bal = P_removal - TotalP,# (-) value is N fertilizer left in soil 
     N_Bal = N_removal - TotalN, 
     ) 
-
-write.csv(nue, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/2024 Bryant Lowe/Outputs/NUE Summary.csv", row.names = FALSE)
 ```
 
 # Cost Summary 
 ```{r}
-
+# Summarize costs for machinery and source by year
 costs <- df2 %>%
-  group_by(Year, Field) %>%
+  group_by(year, field, level4R, crop) %>%
   summarize(
-    AvgMachineCost = mean(MachineryCosts), 
-    AvgSourceCost = mean(SourcePrice), 
-    AvgYield = mean(Yield)
+    avgMachineCost = mean(machineryCosts), 
+    avgSourceCost = mean(sourceCost), 
+    avgYield = mean(yield)
   )
 
+# Summary service and subscription costs by year and field 
 costsService <- services %>%
-  group_by(Year, Field) %>%
+  group_by(year, field) %>%
   summarize(
-    CostService = mean(`Cost($/ac)`)
+    serviceCost = mean(costDolAc)
   )
 
-cost2 <- costsService %>%
-  left_join(costs, by= c("Year", "Field")) %>%
-  mutate(Year = as.integer(Year))
+# Join machine, source, service, and subscription costs 
+costs2 <- costsService %>%
+  left_join(costs, by= c("year", "field"))
 
-corn_price = 4.50
+
+
+# Examples of other farm costs to calculate a rough profit 
+# Need to add additional crop prices to equation (as needed)
+cornPrice = 4.50
+cottonPrice = 0.73
 
 chemical = 100
 land = 300
@@ -111,13 +116,16 @@ other = 200
 
 otherCosts = chemical + land + seed + other
 
-# Cost summary per ac 
-costPerAc <- cost2 %>%
-  mutate(totalCost = AvgMachineCost + AvgSourceCost + CostService, 
-         revenueAc = AvgYield*corn_price,
-         Profits = revenueAc - totalCost - otherCosts)
+# Cost summary per ac of all costs
+costPerAc <- costs2 %>%
+  mutate(totalCost = avgMachineCost + avgSourceCost + serviceCost, 
+         revenueAc = case_when(
+           crop == "cornGrain" ~ avgYield*cornPrice,
+           crop == "cotton" ~ avgYield*cottonPrice, 
+           TRUE ~ 0),
+         profits = revenueAc - totalCost - otherCosts)
 
-write.csv(costPerAc, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/2024 Bryant Lowe/Outputs/Cost Summary.csv", row.names = FALSE)
+
 ```
 
 # CO2 Equivalents 
@@ -129,37 +137,46 @@ Advanced = basic - (basic * 0.07) 14% reduction
 Land Resource Region (LRR)
 
 ```{r}
-LRR = "T" 
-farm$LRR = "T"
 
-farm2 = farm %>%
-  left_join(nitrous, by = c("LRR" = "LRR", "Soil Texture" = "Soil Texture", "Crop" = "Crop")) %>%
-  left_join(nue, by = c("Year", "Crop", "Field Name" = "Field")) %>%
-  select(where(~ !all(is.na(.)))) 
+nue2 <- nue %>%
+  left_join(farm, by = c("year", "crop", "field"))
 
-farm3 = farm2 %>%
+nue3 = nue2 %>%
+  left_join(nitrous, by = c("LRR", "soilTexture", "crop"))
+
+nue4 = nue3 %>%
   mutate(N_KgHa = TotalN * 1.12085, 
-    ProportionalDirectKgHa = ((N_KgHa/`Typical Fert_kgNha`)*
-                              (typicalflux_kgN20ha - Zeroflux_kgN20Ha)), 
-    TotalDirectKgHa = Zeroflux_kgN20Ha + ProportionalDirectKgHa, 
-    IndirectKgHa = N_KgHa*0.0035, 
-    Total = TotalDirectKgHa + IndirectKgHa, 
-    N2Oequiv=Total*(1.57*296), 
-    CO2e_buBasic = N2Oequiv/AvgYield,
+    proportionalDirectKgHa = ((N_KgHa/typicalFertKgNha)*
+                              (typicalFluxKgN20ha - zeroFluxKgN20ha)), 
+    totalDirectKgHa = zeroFluxKgN20ha + proportionalDirectKgHa, 
+    indirectKgHa = N_KgHa*0.0035, 
+    total = totalDirectKgHa + indirectKgHa, 
+    N2Oequiv=total*(1.57*296), 
+    CO2e_buBasic = N2Oequiv/yield,
     CO2e_buInt = CO2e_buBasic - (CO2e_buBasic*0.07),
     CO2e_buAdv = CO2e_buBasic - (CO2e_buBasic*0.14)
   )
 
-n2o <- farm3 %>%
+n2o <- nue4 %>%
   mutate(CO2equiv = case_when(
-    `4RLevel` == "Basic" ~  CO2e_buBasic, 
-    `4RLevel` == "Intermediate" ~  CO2e_buInt, 
-    `4RLevel` == "Advanced" ~  CO2e_buAdv)) %>%
+    level4R == "Basic" ~  CO2e_buBasic, 
+    level4R == "Intermediate" ~  CO2e_buInt, 
+    level4R == "Advanced" ~  CO2e_buAdv)) %>%
   select(-CO2e_buBasic, -CO2e_buInt, -CO2e_buAdv)
 
-write.csv(n2o, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/2024 Bryant Lowe/Outputs/N2O Summary.csv", row.names = FALSE)
 
 ```
  
+```{r}
+# writing files 
+write.csv(nue, file = "2024 Bryant Lowe/Outputs/NUE Summary.csv", row.names = FALSE)
+write.csv(costPerAc, file = "2024 Bryant Lowe/Outputs/Cost Summary.csv", row.names = FALSE)
+write.csv(n2o, file = "2024 Bryant Lowe/Outputs/N2O Summary.csv", row.names = FALSE)
+```
+```{r}
+write.csv(nue, file = "2024 Mason Roberts/Outputs/NUE Summary.csv", row.names = FALSE)
+write.csv(costPerAc, file = "2024 Mason Roberts/Outputs/Cost Summary.csv", row.names = FALSE)
+write.csv(n2o, file = "2024 Mason Roberts/Outputs/N2O Summary.csv", row.names = FALSE)
+```
 
 
