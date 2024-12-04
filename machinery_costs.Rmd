@@ -43,7 +43,8 @@ irrigation = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - 
 
 #Prices for Diesel
 prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/FertilizerPrices_Dec2024.xlsx", sheet = 2)
-
+prices <- prices %>% #remove the duplicate rows that are being added at import
+  distinct()
 ```
 
 # Custom Costs 
@@ -134,17 +135,17 @@ None
 # fuel cost global variable for irrigation (not sure where it comes from - could use average?)**
 fuel_cost2 = 2.75
 
-# # Join prices df to get diesel costs for relevant years (3 yr avg)
-# df8 <- df7 %>%
-#   left_join(prices %>% select(Year, Diesel), by = c("year" = "Year"))
-
-# Only join diesel prices
-diesel <- prices %>%
-  group_by(Year) %>%
-  summarise(Diesel = mean(Diesel))
 # Join prices df to get diesel costs for relevant years (3 yr avg)
 df8 <- df7 %>%
-  left_join(diesel, by = c("year" = "Year"))
+  left_join(prices %>% select(Year, Diesel), by = c("year" = "Year"))
+
+# # Only join diesel prices
+# diesel <- prices %>%
+#   group_by(Year) %>%
+#   summarise(Diesel = mean(Diesel))
+# # Join prices df to get diesel costs for relevant years (3 yr avg)
+# df8 <- df7 %>%
+#   left_join(diesel, by = c("year" = "Year"))
 
 # Calculate Fuel Costs 
 df9 <- df8 %>%
@@ -257,9 +258,9 @@ inputs1 <- df13 %>%
 # Write File 
 ```{r Write File}
 # Save csv
-write.csv(inputs1, file = "2024 Bryant Lowe/Outputs/DE Inputs_Costs.csv", row.names = FALSE)
+write.csv(inputs1, file = "2024 Bryant Lowe/Outputs/DE Inputs_machCosts.csv", row.names = FALSE)
 
-write.csv(inputs1, file = "2024 Mason Roberts/Outputs/GA Inputs_Costs.csv", row.names = FALSE)
+write.csv(inputs1, file = "2024 Mason Roberts/Outputs/GA Inputs_machCosts.csv", row.names = FALSE)
 ```
 
 ```{r}
