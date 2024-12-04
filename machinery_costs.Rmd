@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r load advocate data}
 library(readxl)
 
-advocate = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/DE Inputs.xlsx")
+advocate = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Advocate Case Studies/Delaware/DE Inputs.xlsx")
 ```
 
 
