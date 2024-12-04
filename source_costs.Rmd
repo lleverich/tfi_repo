@@ -17,14 +17,16 @@ setwd("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/
 ```{r load advocate data}
 library(readxl)
 
-advocate = read.csv("2024 Bryant Lowe/Outputs/DE Inputs_Costs.csv")
-advocate = read.csv("2024 Mason Roberts/Outputs/GA Inputs_Costs.csv")
+advocate = read.csv("2024 Bryant Lowe/Outputs/DE Inputs_machCosts.csv")
+advocate = read.csv("2024 Mason Roberts/Outputs/GA Inputs_machCosts.csv")
 ```
 
 
 ```{r load calculator sheets}
 #Sources 
 prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/FertilizerPrices_Dec2024.xlsx", sheet = 2)
+prices <- prices %>% #remove the duplicate rows that are being added at import
+  distinct()
 ```
 
 ```{r}
@@ -32,18 +34,15 @@ prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Prog
 library(tidyr)
 
 # Convert the dataframe to long format
-price_long <- prices %>%
+pricesLong <- prices %>%
   select(where(~ !all(is.na(.)))) %>% 
   pivot_longer(
     cols = starts_with("AA"):starts_with("K"),  # Select the columns to pivot
-    names_to = "Source",  # New column for the names of the subjects
-    values_to = "SourcePrice")    # New column for the scores 
-
-# %>%
-# mutate(unit = ifelse(Source %in% c("N", "P", "K"), "lbs", "ton"))
+    names_to = "source",  # New column for the names of the subjects
+    values_to = "sourceCost")    # New column for the scores 
 
 # View the long-format dataframe
-print(price_long)
+print(pricesLong)
 ```
 
 
@@ -59,13 +58,14 @@ ii.	Specific Sources
 ```{r}
 # Join prices to inputs for specific sources prices 
 df1 <- advocate %>%
-  left_join(price_long, by = c("Source", "Year")) %>%
-  mutate(SourcePrice = (SourcePrice/2000) * Source.Rate)
+  left_join(pricesLong, by = c("source", "year"= "Year")) %>%
+  mutate(sourceCost = (sourceCost/2000) * sourceRate)
 
 df2 <- df1 %>%
-  left_join(prices, "Year", # Join all columns by year for prices 
-            suffix = c("perc", "price")) %>% # add a suffix to the columns for the 2 dataframes being joined 
-  select(where(~ !all(is.na(.)))) #Drop all columns where all rows are NA
+  left_join(prices, by = c("year" = "Year"), # Join all columns by year for prices 
+            suffix = c("perc", "price"))  # add a suffix to the columns for the 2 dataframes being joined 
+  
+# %>% select(where(~ !all(is.na(.)))) #Drop all columns where all rows are NA
 ```
 
 # Source Costs 
@@ -78,33 +78,47 @@ i.	Custom Blends or Starter
 ```{r}
 # Calculate prices for blends/starter 
 df3 <- df2 %>%
-  mutate(SourcePrice = case_when(
-    Source == "Blends" | Source == "Starter" | Source == "Blend" ~ 
-      (Nprice * (Nperc/100) * Source.Rate) + (Pprice * (Pperc/100) * Source.Rate) + (Kprice * (Kperc/100) * Source.Rate), 
-    TRUE ~ SourcePrice  # Default case: retain the current value of "price"
+  mutate(sourceCost = case_when(
+    source == "blend" | source == "starter"  ~ 
+      (Nprice * (Nperc/100) * sourceRate) + (Pprice * (Pperc/100) * sourceRate) + (Kprice * (Kperc/100) * sourceRate), 
+    TRUE ~ sourceCost  # Default case: retain the current value of "price"
   )) 
 
 ```
 
-Export prices 
-```{r}
-
-df3 <- df3 %>%
-  select(-c(24:35))
-
-# Save csv
-write.csv(df3, file = "C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/2024 Bryant Lowe/Outputs/DE Inputs_Costs.csv", row.names = FALSE)
-
-print(df3)
-```
-
-Total N, P, and K units per ac per year 
+Calculate source costs for inhibitors, micros, other
 
 ```{r}
 df4 <- df3 %>%
-  mutate(N_lbsAc = Nperc/100 * Source.Rate, 
-         P_lbsAc = Pperc/100 * Source.Rate, 
-         K_lbsAc = Kperc/100 * Source.Rate)
+  mutate(microCost = (microDolTon/2000) * sourceRate, 
+         inhibitorCost = (inhibitorDolTon/2000) * sourceRate, 
+         otherFertCost = (otherFertDolTon/2000)* sourceRate) %>%
+  mutate(specialSourceCost = 
+           (coalesce(microCost, 0) + 
+           coalesce(inhibitorCost, 0) + 
+           coalesce(otherFertCost, 0))) 
+
+df4$specialSourceCost
+
+df5 <- df4 %>%
+  mutate(sourceCost = sourceCost + specialSourceCost)
+         
 ```
 
+
+Export prices 
+```{r}
+df6 <- df5 %>%
+  select(-c(33:52))%>%
+  select(-starts_with("AA") & !starts_with("Kprice"))%>%
+  select(where(~ !all(is.na(.))))
+```
+
+
+```{r}
+# Save csv
+write.csv(df6, file = "2024 Bryant Lowe/Outputs/DE Inputs_sourceMachCosts.csv", row.names = FALSE)
+write.csv(df6, file = "2024 Mason Roberts/Outputs/GA Inputs_sourceMachCosts.csv", row.names = FALSE)
+
+```
 
