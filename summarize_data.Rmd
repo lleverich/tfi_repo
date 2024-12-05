@@ -18,6 +18,7 @@ setwd("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/
 ```{r packages}
 library(readxl)
 library(tidyverse)
+library(writexl)
 ```
 
 
@@ -63,39 +64,52 @@ df2 <- df1 %>%
 
 ```{r}
 nue <- df2 %>%
-  group_by(year, field, crop)%>% 
-  summarise(
+  group_by(year, field, crop) %>% 
+  summarize(
     TotalN = sum(N_lbsAc, na.rm = TRUE), 
     TotalP = sum(P_lbsAc, na.rm = TRUE),
     TotalK = sum(K_lbsAc, na.rm = TRUE), 
-    AvgYield = mean(yield), 
-    NUE_PFP = AvgYield/TotalN, #PFP = (lb grain harvested) / (lb nutrient applied)
-    PUE_PFP = AvgYield/TotalP, 
-    N_removal = (AvgYield * 56 * 0.0136), # corn weight is 56 lbs and 0.0136 is the N concentration (1.36%) of grain
-    P_removal = (AvgYield * 56 * 0.25), 
-    NUE_PNB = N_removal/TotalN, # Partial nutrient balance (PNB)= (lb harvest removal) / (lb applied nutrient)
-    PUE_PNB = P_removal/TotalP, 
-    P_Bal = P_removal - TotalP,# (-) value is N fertilizer left in soil 
-    N_Bal = N_removal - TotalN, 
+    AvgYield = mean(yield, na.rm = TRUE), 
+    NUE_PFP = AvgYield / TotalN, #PFP = (lb grain harvested) / (lb nutrient applied)
+    PUE_PFP = AvgYield / TotalP,
+    N_removal = mean(case_when(
+      crop == "corn" ~ (AvgYield * 56 * 0.0136),
+      crop == "cotton" ~ (AvgYield * 0.002083 * 32 ),# 56 lbs/bu and 0.0136 Nconc (%) of grain
+      crop == "peanuts" ~ ((AvgYield / 2000) * 70))), # 70 lbs N / ton
+    P_removal = mean(case_when(
+      crop == "corn" ~ (AvgYield * 0.35), # 0.35 lbs P/bu
+      crop == "cotton" ~ (AvgYield * 0.002083 * 14 ),# 56 lbs/bu and 0.0136 Nconc (%) of grain
+      crop == "peanuts" ~ ((AvgYield / 2000) * 11))), # 70 lbs N / ton
+    NUE_PNB = N_removal/TotalN, # PNB= (lb harvest removal) / (lb applied nutrient)
+    PUE_PNB = P_removal/TotalP,
+    P_Bal = TotalP - P_removal,# lbs N applied - lb N harvested (N left in soil)
+    N_Bal = TotalN - N_removal
     ) 
 ```
 
 # Cost Summary 
 ```{r}
-# Summarize costs for machinery and source by year
+# Summarize costs for total costs for machinery and source by year and field
 costs <- df2 %>%
   group_by(year, field, level4R, crop) %>%
   summarize(
-    avgMachineCost = mean(machineryCosts), 
-    avgSourceCost = mean(sourceCost), 
-    avgYield = mean(yield)
+    totalMachineCost = sum(machineryCosts), 
+    totalSourceCost = sum(sourceCost), 
+    totalCost = sum(totalCostPerApp), 
+    avgYield = mean(yield), 
+    Nprice = mean(Nprice),
+    Kprice = mean(Kprice),
+    Pprice = mean(Pprice),
+    Ncost = sum(case_when(
+      Nperc != 0 ~ sourceCost,  # Sum sourceCost only when Nperc is not 0
+      TRUE ~ 0  # Otherwise, add 0
+    ))
   )
-
-# Summary service and subscription costs by year and field 
+# Summary to get total spent on service and subscription by year and field 
 costsService <- services %>%
   group_by(year, field) %>%
   summarize(
-    serviceCost = mean(costDolAc)
+    totalServiceCost = sum(costDolAc)
   )
 
 # Join machine, source, service, and subscription costs 
@@ -106,25 +120,29 @@ costs2 <- costsService %>%
 
 # Examples of other farm costs to calculate a rough profit 
 # Need to add additional crop prices to equation (as needed)
-cornPrice = 4.50
-cottonPrice = 0.73
+cornPrice = 4.50 # per bu
+cottonPrice = 0.73 # per lb
+peanutPrice = 0.26 # per lb
 
-chemical = 100
-land = 300
-seed = 150 
-other = 200 
+# chemical = 100
+# land = 300
+# seed = 150 
+# other = 200 
+# otherCosts = chemical + land + seed + other
 
-otherCosts = chemical + land + seed + other
-
-# Cost summary per ac of all costs
-costPerAc <- costs2 %>%
-  mutate(totalCost = avgMachineCost + avgSourceCost + serviceCost, 
+# Cost summary for each field
+totalCosts <- costs2 %>%
+  mutate(totalCost = totalCost + totalServiceCost, 
          revenueAc = case_when(
            crop == "cornGrain" ~ avgYield*cornPrice,
-           crop == "cotton" ~ avgYield*cottonPrice, 
+           crop == "cotton" ~ avgYield*cottonPrice,
+           crop == "peanuts" ~ avgYield*peanutPrice,
            TRUE ~ 0),
-         profits = revenueAc - totalCost - otherCosts)
+         profits = revenueAc - totalCost)
 
+# Compare costs with N rates 
+costNUE <- totalCosts %>%
+  left_join(nue, by = c("year", "field", "crop"))
 
 ```
 
@@ -137,6 +155,8 @@ Advanced = basic - (basic * 0.07) 14% reduction
 Land Resource Region (LRR)
 
 ```{r}
+
+# CORN ONLY 
 
 nue2 <- nue %>%
   left_join(farm, by = c("year", "crop", "field"))
@@ -164,19 +184,24 @@ n2o <- nue4 %>%
     level4R == "Advanced" ~  CO2e_buAdv)) %>%
   select(-CO2e_buBasic, -CO2e_buInt, -CO2e_buAdv)
 
+costNUEco2 <- costNUE %>%
+  left_join(n2o %>% select(year, field, CO2equiv), by = c("year", "field"))
 
 ```
- 
+
+
 ```{r}
 # writing files 
-write.csv(nue, file = "2024 Bryant Lowe/Outputs/NUE Summary.csv", row.names = FALSE)
-write.csv(costPerAc, file = "2024 Bryant Lowe/Outputs/Cost Summary.csv", row.names = FALSE)
-write.csv(n2o, file = "2024 Bryant Lowe/Outputs/N2O Summary.csv", row.names = FALSE)
+write_xlsx(costNUEco2, "2024 Bryant Lowe/Outputs/Field Summary.xlsx")
+# write.csv(nue, file = "2024 Bryant Lowe/Outputs/NUE Summary.csv", row.names = FALSE)
+# write.csv(costPerAc, file = "2024 Bryant Lowe/Outputs/Cost Summary.csv", row.names = FALSE)
+# write.csv(n2o, file = "2024 Bryant Lowe/Outputs/N2O Summary.csv", row.names = FALSE)
 ```
 ```{r}
-write.csv(nue, file = "2024 Mason Roberts/Outputs/NUE Summary.csv", row.names = FALSE)
-write.csv(costPerAc, file = "2024 Mason Roberts/Outputs/Cost Summary.csv", row.names = FALSE)
-write.csv(n2o, file = "2024 Mason Roberts/Outputs/N2O Summary.csv", row.names = FALSE)
+write_xlsx(costNUEco2, "2024 Mason Roberts/Outputs/Field Summary.xlsx")
+# write.csv(nue, file = "2024 Mason Roberts/Outputs/NUE Summary.csv", row.names = FALSE)
+# write.csv(costPerAc, file = "2024 Mason Roberts/Outputs/Cost Summary.csv", row.names = FALSE)
+# write.csv(n2o, file = "2024 Mason Roberts/Outputs/N2O Summary.csv", row.names = FALSE)
 ```
 
 

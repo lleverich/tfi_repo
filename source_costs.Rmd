@@ -90,7 +90,7 @@ Calculate source costs for inhibitors, micros, other
 
 ```{r}
 df4 <- df3 %>%
-  mutate(microCost = (microDolTon/2000) * sourceRate, 
+  mutate(microCost = (inhibitorDolTon/2000) * sourceRate, 
          inhibitorCost = (inhibitorDolTon/2000) * sourceRate, 
          otherFertCost = (otherFertDolTon/2000)* sourceRate) %>%
   mutate(specialSourceCost = 
@@ -101,19 +101,32 @@ df4 <- df3 %>%
 df4$specialSourceCost
 
 df5 <- df4 %>%
-  mutate(sourceCost = sourceCost + specialSourceCost)
+  mutate(totalSourceCost = sourceCost + specialSourceCost, 
+         totalCostPerApp = machineryCosts + totalSourceCost)
          
 ```
 
 
-Export prices 
+Clean up dataframe
 ```{r}
 df6 <- df5 %>%
-  select(-c(33:52))%>%
-  select(-starts_with("AA") & !starts_with("Kprice"))%>%
+  select(-c(33:49))%>%
+  # select(-starts_with("AA") & !starts_with("valueAdd"))%>% # redundant code 
   select(where(~ !all(is.na(.))))
 ```
 
+Check total $/ac for each field and year
+```{r}
+# Summarize costs for total costs for machinery and source by year and field
+costSummary <- df6 %>%
+  group_by(year, field) %>%
+  summarize(
+    totalMachineCost = sum(machineryCosts), 
+    totalSourceCost = sum(sourceCost), 
+    totalCost = sum(totalCostPerApp)
+)
+
+```
 
 ```{r}
 # Save csv
