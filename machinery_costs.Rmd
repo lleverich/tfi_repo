@@ -20,7 +20,6 @@ library(readxl)
 library(tidyverse)
 ```
 
-
 ```{r DE 2024 Advocate}
 advocate1 = read_excel("2024 Bryant Lowe/DE Inputs.xlsx")
 ```
@@ -49,9 +48,9 @@ prices <- prices %>% #remove the duplicate rows that are being added at import
 
 # Custom Costs 
 
-```{r Prepare Data Frame for Machinery Costs}
-# Clean out empty columns 
-df1 <- advocate1 %>%
+```{r Custom Costs}
+# Add a column for all custom costs per application 
+df1 <- advocate1 %>% 
   mutate(totalCustomCost = appCostPerAc) 
 
 ```
@@ -59,7 +58,7 @@ df1 <- advocate1 %>%
 # Drop purchase price columns if using standard price for machinery 
 ```{r}
 df2 <- df1 %>%
-  # Check if 'machPriceType' is "standard" and drop the specified columns
+  # Check if 'machPriceType' is "standard" and drop the specified columns -     other option is "own" meaning they provide their own cost 
   {if ("standard" %in% .$machPriceType) 
      select(., -machPurchPrice, -impPurchPrice) 
    else .}
@@ -75,21 +74,20 @@ Mach added to end of columns associated with Machines
 # Join implement cost values 
 df3 <- df2 %>%
   left_join(implements, by = c("implement", "impWdthFt"))
-  # select(where(~ !all(is.na(.))))
+  # select(where(~ !all(is.na(.)))) - DO NOT drop columns. Keep same column template until end 
 
 # Join tractor costs values
 df4 <- df3 %>%
   left_join(tractors, by = c("machine", "tractorHp"),
             suffix = c("Imp", "Trac"))  #Imp (for implement) added to original columns
-  # %>% select(where(~ !all(is.na(.)))) #Drop columns that are all empty
-
+ 
 # Join machine cost values
 df5 <- df4 %>%
   left_join(machines, by = c("machine"), # Join tractor costs by its HP class
             suffix = c("", "Mach")) #Imp (for implement) added to original columns
 ```
 
-# irrigation Costs 
+# Irrigation Costs 
 ```{r}
 # Join irrigation cost values 
 df6 <- df5 %>%
@@ -114,7 +112,7 @@ Labor = 15
 df7 <- df6 %>%
   mutate(
     laborCost = case_when(
-    is.na(irrigation) ~ perRateHrAc * Labor,
+    is.na(irrigation) ~ perRateHrAc * Labor, # If not an irrigation app
     irrigation == "centerPivot" ~ Labor * laborHrAcIn * irrVolAcIn, 
     irrigation == "dripIrrigation"  ~  Labor * laborHrsApp, 
     TRUE ~ 0  # Default case if none of the above conditions are met
@@ -138,14 +136,6 @@ fuel_cost2 = 2.75
 # Join prices df to get diesel costs for relevant years (3 yr avg)
 df8 <- df7 %>%
   left_join(prices %>% select(Year, Diesel), by = c("year" = "Year"))
-
-# # Only join diesel prices
-# diesel <- prices %>%
-#   group_by(Year) %>%
-#   summarise(Diesel = mean(Diesel))
-# # Join prices df to get diesel costs for relevant years (3 yr avg)
-# df8 <- df7 %>%
-#   left_join(diesel, by = c("year" = "Year"))
 
 # Calculate Fuel Costs 
 df9 <- df8 %>%
@@ -229,7 +219,7 @@ df12 <- df11 %>%
 
 ```
 
-## Total Costs 
+## Total Machinery Costs 
 ```{r Total Machinery Costs}
 df13 <- df12 %>% 
   # mutate(# Add dummy columns for values in equations when farmer doesn't use their own machinery  
@@ -248,9 +238,7 @@ df13 <- df12 %>%
 
   
 inputs1 <- df13 %>%
-  select(-c(29:68))
-
-  # select(where(~ !all(is.na(.)))) 
+  select(-c(29:68)) # drop columns for calculating costs 
   
 ```
 
@@ -264,5 +252,5 @@ write.csv(inputs1, file = "2024 Mason Roberts/Outputs/GA Inputs_machCosts.csv", 
 ```
 
 ```{r}
-# rm(list = ls())
+# rm(list = ls()) - clear environment 
 ```
