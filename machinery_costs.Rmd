@@ -1,8 +1,10 @@
 ---
 title: "Machinery COsts"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 date: "2024-10-28"
-editor_options: 
+editor_options:
   chunk_output_type: console
 ---
 
@@ -11,37 +13,35 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r set wd}
-setwd("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/")
+setwd("C:/Users/LeannaNigon/The Fertilizer Institute/TFI - Programs/Research/4R Advocate Case Studies/4R Calculator/")
 ```
 
 ```{r packages}
+library(knitr)
 library(here)
 library(readxl)
 library(tidyverse)
 ```
 
-```{r DE 2024 Advocate}
-advocate1 = read_excel("2024 Bryant Lowe/DE Inputs.xlsx")
+```{r Load Advocate Inputs}
+advocate1 = read_excel("4R Advocate Data/2025 Urich Farms/Inputs_MO.xlsx", sheet = 2)
 ```
 
-```{r GA 2024 Advocate}
-advocate1 = read_excel("2024 Mason Roberts/GA Inputs.xlsx", sheet = 2)
-```
 
 ```{r load calculator sheets}
 #Machinery 
-tractors = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 1)
+tractors = read_excel("Leanna's Calculator/Machinery.xlsx", sheet = 1)
 
-machines = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 2)
+machines = read_excel("Leanna's Calculator/Machinery.xlsx", sheet = 2)
 
-implements = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 3)
+implements = read_excel("Leanna's Calculator/Machinery.xlsx", sheet = 3)
 
-equipment = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 5)
+equipment = read_excel("Leanna's Calculator/Machinery.xlsx", sheet = 5)
 
-irrigation = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/Machinery.xlsx", sheet = 4)
+irrigation = read_excel("Leanna's Calculator/Machinery.xlsx", sheet = 4)
 
 #Prices for Diesel
-prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/FertilizerPrices_Dec2024.xlsx", sheet = 2)
+prices = read_excel("Leanna's Calculator/FertilizerPrices_Dec2025.xlsx", sheet = 2)
 prices <- prices %>% #remove the duplicate rows that are being added at import
   distinct()
 ```
@@ -65,6 +65,12 @@ df2 <- df1 %>%
 
 ```
 
+# Check data types (DO NOT drop all empty columns - used in logic)
+```{r}
+str(df2)
+```
+
+
 # Machinery Self Application Costs 
 Tact added to end of values associate with Tractors 
 Imp added to end of columns associated with Implements 
@@ -85,13 +91,17 @@ df4 <- df3 %>%
 df5 <- df4 %>%
   left_join(machines, by = c("machine"), # Join tractor costs by its HP class
             suffix = c("", "Mach")) #Imp (for implement) added to original columns
+
+# Might result in empty columns, DO NOT drop columns. Keep same column template until end  
 ```
 
 # Irrigation Costs 
 ```{r}
 # Join irrigation cost values 
 df6 <- df5 %>%
-  left_join(irrigation, by = c("irrigation")) # Do not drop extra columns for calculation of cost as placeholder columns 
+  left_join(irrigation, by = c("irrigation")) 
+
+# Do not drop extra columns for calculation of cost as placeholder columns 
 ```
 
 ## Variable Costs 
@@ -238,7 +248,9 @@ df13 <- df12 %>%
 
   
 inputs1 <- df13 %>%
-  select(-c(29:68)) # drop columns for calculating costs 
+  select(-c(31:70)) 
+
+# drop columns for calculating costs. 31 columns in original df (advocate 1) and need the last 3 columns 
   
 ```
 
@@ -246,11 +258,9 @@ inputs1 <- df13 %>%
 # Write File 
 ```{r Write File}
 # Save csv
-write.csv(inputs1, file = "2024 Bryant Lowe/Outputs/DE Inputs_machCosts.csv", row.names = FALSE)
-
-write.csv(inputs1, file = "2024 Mason Roberts/Outputs/GA Inputs_machCosts.csv", row.names = FALSE)
+write.csv(inputs1, file = "4R Advocate Data/2025 Urich Farms/Inputs_machCosts.csv", row.names = FALSE)
 ```
 
 ```{r}
-# rm(list = ls()) - clear environment 
+rm(list = ls()) # clear environment
 ```

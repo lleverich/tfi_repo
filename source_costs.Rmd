@@ -11,20 +11,19 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r set wd}
-setwd("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/4R Advocate Case Studies/")
+setwd("C:/Users/LeannaNigon/The Fertilizer Institute/TFI - Programs/Research/4R Advocate Case Studies/4R Calculator/")
 ```
 
 ```{r load advocate data}
 library(readxl)
 
-advocate = read.csv("2024 Bryant Lowe/Outputs/DE Inputs_machCosts.csv")
-advocate = read.csv("2024 Mason Roberts/Outputs/GA Inputs_machCosts.csv")
+advocate = read.csv("4R Advocate Data/2025 Urich Farms/Inputs_machCosts.csv")
 ```
 
 
 ```{r load calculator sheets}
 #Sources 
-prices = read_excel("C:/Users/LeannaLeverich/The Fertilizer Institute/TFI - Programs/Research/4R/4R Calculator/Leanna's Calculator/FertilizerPrices_Dec2024.xlsx", sheet = 2)
+prices = read_excel("C:/Users/LeannaNigon/The Fertilizer Institute/TFI - Programs/Research/4R Advocate Case Studies/4R Calculator/Leanna's Calculator/FertilizerPrices_Dec2024.xlsx", sheet = 2)
 prices <- prices %>% #remove the duplicate rows that are being added at import
   distinct()
 ```
@@ -79,18 +78,18 @@ i.	Custom Blends or Starter
 # Calculate prices for blends/starter 
 df3 <- df2 %>%
   mutate(sourceCost = case_when(
-    source == "blend" | source == "starter"  ~ 
+    source == "blend" | source == "starter" | source == "valueAdd" ~ 
       (Nprice * (Nperc/100) * sourceRate) + (Pprice * (Pperc/100) * sourceRate) + (Kprice * (Kperc/100) * sourceRate), 
     TRUE ~ sourceCost  # Default case: retain the current value of "price"
   )) 
 
 ```
 
-Calculate source costs for inhibitors, micros, other
+# Calculate source costs for inhibitors, micros, other
 
 ```{r}
 df4 <- df3 %>%
-  mutate(microCost = (inhibitorDolTon/2000) * sourceRate, 
+  mutate(microCost = (microDolTon/2000) * sourceRate, 
          inhibitorCost = (inhibitorDolTon/2000) * sourceRate, 
          otherFertCost = (otherFertDolTon/2000)* sourceRate) %>%
   mutate(specialSourceCost = 
@@ -107,15 +106,15 @@ df5 <- df4 %>%
 ```
 
 
-Clean up dataframe
+# Clean up dataframe
 ```{r}
 df6 <- df5 %>%
-  select(-c(33:49))%>%
-  # select(-starts_with("AA") & !starts_with("valueAdd"))%>% # redundant code 
+  select(-c(35:49))%>%
+  # select(-starts_with("AA") & !starts_with("valueAdd"))%>% # redundant code
   select(where(~ !all(is.na(.))))
 ```
 
-Check total $/ac for each field and year
+# Check total $/ac for each field and year
 ```{r}
 # Summarize costs for total costs for machinery and source by year and field
 costSummary <- df6 %>%
@@ -130,8 +129,6 @@ costSummary <- df6 %>%
 
 ```{r}
 # Save csv
-write.csv(df6, file = "2024 Bryant Lowe/Outputs/DE Inputs_sourceMachCosts.csv", row.names = FALSE)
-write.csv(df6, file = "2024 Mason Roberts/Outputs/GA Inputs_sourceMachCosts.csv", row.names = FALSE)
-
+write.csv(df6, file = "4R Advocate Data/2025 Urich Farms/Inputs_sourceMachCosts.csv", row.names = FALSE)
 ```
 

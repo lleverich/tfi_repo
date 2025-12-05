@@ -1,0 +1,132 @@
+---
+title: "results_dataviz"
+output: html_document
+date: "2024-12-04"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(ggplot2)
+library(patchwork)
+
+```
+
+```{r}
+setwd("C:/Users/LeannaNigon/The Fertilizer Institute/TFI - Programs/Research/4R Advocate Case Studies/4R Calculator/")
+```
+
+```{r}
+MO = read_excel("4R Advocate Data/2025 Urich Farms/Field Summary.xlsx", sheet = 2)
+```
+
+# Corn only years 
+```{r}
+MO_corn <- MO %>% 
+  filter(crop != "soybeans")
+```
+
+
+# NUE 
+
+```{r}
+scale_factor <- max(MO_corn$NUE_PFP, na.rm = TRUE) / max(MO_corn$CO2equiv, na.rm = TRUE)
+
+ggplot(MO_corn, aes(x = as.factor(field), NUE_PFP)) +
+  geom_bar(aes(fill = as.factor(year)), position = position_dodge2(width = 0.9, preserve = "single"),width = 0.8, stat = "identity") + 
+  scale_fill_manual(values = c(
+    "2021" = "#80cbc4",   # light teal
+    "2017" = "#80cbc4", 
+    "2023" = "#00bfa5",   # medium teal
+    "2024" = "#00bfa5"    # dark teal
+  )) 
+
+ggplot(MO_corn, aes(x = field)) + 
+  geom_bar(aes(y = NUE_PFP, fill = as.factor(year)), position = position_dodge2(width = 0.9, preserve = "single"),width = 0.8, stat = "identity") +
+  # geom_text(aes(y = NUE_PFP, label = round(NUE_PFP, 0), vjust = 3)) +
+  geom_line(aes(y = CO2equiv / 10), color = "cornsilk4", size = 2) +
+  geom_point(aes(y = CO2equiv / 10), color = "cornsilk4", size = 4, shape = 15, position = position_dodge2(width = 0.9)) + 
+  scale_y_continuous(
+    name = "NUE (%)",
+    sec.axis = sec_axis(trans = ~.*10 , name = "CO2")) + 
+  ggtitle("Relationship between NUE and CO2 Emissions \nfor an Advanced 4R Farmer")
+
+
+  geom_point(aes(y = CO2equiv * scale_factor, color = as.factor(year)),
+             size = 4, shape = 21, stroke = 2,
+             position = position_dodge(0.8)) +
+  scale_y_continuous(
+    name = "N Balance (lb/acre)",
+    # limits = c(0, 2),
+    breaks = seq(0, 120, 20),
+    sec.axis = sec_axis(~ . / scale_factor,
+                        name = "CO₂eq (kg/ha)",
+                        breaks = seq(0, 12, 2))) +
+  labs(x = "Field", fill = "Year", color = "Year") +
+  theme_minimal()
+
++
+  geom_point(aes(y = AvgYield), group = 1, color = "cornsilk4", width = 1.5)
+  geom_bar(aes(y = N_Bal), stat = "identity", fill = "cornsilk4")
+  geom_text(aes(y = NUE_PNB, label = round(NUE_PNB, 0), vjust = 3)) + 
+  geom_line(aes(y = CO2equiv), color = "cornsilk4", size = 2) +
+  geom_point(aes(y = CO2equiv), color = "cornsilk4", size = 3, shape = 15) + 
+  scale_y_continuous(
+    name = "NUE (%)",
+    sec.axis = sec_axis(trans = ~./100 , name = "CO2")) + 
+  ggtitle("Relationship between NUE and CO2 Emissions \nfor an Advanced 4R Farmer")
+  
+```
+
+```{r}
+p <- ggplot(MO_corn, aes(x = as.factor(field), NUE_PFP)) +
+# Bars: NUE_PFP, dodged by year, equal width
+  geom_col(aes(y = NUE_PFP, fill = as.factor(year)),
+           position = position_dodge2(width = 0.9, preserve = "single"),
+           width = 0.8,
+           color = "white", linewidth = 0.8) +
+  
+   # Points on the lines (dodged same as bars)
+  geom_point(aes(y = CO2equiv * scale_factor, 
+                 color = field),
+             size = 6, shape = 18,
+             position = position_dodge2(width = 0.9)) +
+ 
+  #  # Lines: one line per field for CO2equiv (scaled)
+  # geom_line(aes(y = CO2equiv / 10, 
+  #               color = field, 
+  #               group = field),
+  #           linewidth = 2.5) +
+  
+  # Manual colors matching TFI palette
+  # scale_fill_manual(values = c(
+  #   "2021" = "#80cbc4",  
+  #   "2017" = "#80cbc4", 
+  #   "2023" = "#00bfa5",  
+  #   "2024" = "#00bfa5")) + 
+    
+  scale_color_manual(values = c("Chula" = "#f57c00", 
+                                "Mark"   = "#ef6c00", 
+                                "Linda"  = "#e65100")) +  # orange shades for lines
+  
+  # Dual y-axes
+  scale_y_continuous(
+    name = "NUE PFP",
+    sec.axis = sec_axis(~ . / scale_factor, name = "CO₂eq (kg/ha)")
+  ) +
+  
+  labs(title = "NUE PFP and CO₂ Equivalent Emissions by Field and Year",
+       x = "Field", fill = "Year", color = "Field") +
+  
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", color = "#004d40"),
+    # axis.title.y = element_text(color = "#00897b"),
+    # axis.title.y.right = element_text(color = "#f57c00"),
+    legend.position = "bottom"
+  )
+
+library(export)
+graph2ppt(p, file = "Urich_Farms_NUE.pptx", width = 10, height = 6, editable = TRUE)
+```
+
